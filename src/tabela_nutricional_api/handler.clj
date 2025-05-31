@@ -21,10 +21,14 @@
    :body (json/generate-string conteudo)})
 
 (defroutes app-routes
+
+           (GET "/" []
+             (como-json {:mensagem "Bem-vindo à API de Tabela Nutricional!"}))
+
            ;; USUÁRIOS
            (POST "/usuarios" {body :body}
              (try
-               (let [required-keys [:nome :sexo :peso :altura :idade]
+               (let [required-keys [:nome :altura :peso :idade :sexo]
                      missing-keys (remove #(contains? body %) required-keys)]
                  (if (empty? missing-keys)
                    (como-json (user/cadastrar-usuario body) 201)
@@ -50,12 +54,15 @@
              (try
                (let [resultado (nutrition/buscar-alimentos query)]
                  (if (:sucesso resultado)
-                   (como-json (:opcoes resultado))
+                   (como-json
+                     ;; Aqui retornamos a lista completa, já com porção
+                     (map #(select-keys % [:description :servingSize :servingSizeUnit :foodNutrients]) (:opcoes resultado)))
                    (como-json {:erro "Falha na busca"
                                :detalhes (:erro resultado)} 400)))
                (catch Exception e
                  (como-json {:erro "Erro no servidor"
                              :detalhes (.getMessage e)} 500))))
+
 
            ;; ALIMENTOS
            (POST "/alimentos" {body :body}
@@ -75,7 +82,17 @@
                  (como-json {:erro "Falha no registro"
                              :detalhes (.getMessage e)} 500))))
 
-           (route/not-found (como-json {:erro "Endpoint não encontrado"} 404)))
+           (GET "/api/alimentos" [q]
+             (try
+               (if q
+                 (como-json (nutrition/alimentos-info q))
+                 (como-json {:erro "Parâmetro 'q' (query) é obrigatório"} 400))
+               (catch Exception e
+                 (como-json {:erro "Erro ao buscar alimentos"
+                             :detalhes (.getMessage e)} 500))))
+
+           (route/not-found (como-json {:erro "Endpoint não encontrado"} 404))
+           )
 
 (def app
   (-> app-routes
