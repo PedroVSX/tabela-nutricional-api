@@ -27,16 +27,6 @@
       {:sucesso false
        :erro (str "Erro na API externa - Status: " (:status response))})))
 
-;(defn extrair-info-alimento [alimento]
-;  (let [nome (:description alimento) ;; Pega a descrição completa do alimento
-;        porcao (when (and (:servingSize alimento) (:servingSizeUnit alimento))
-;                 (str (:servingSize alimento) " " (:servingSizeUnit alimento)))
-;        calorias (some #(when (= "Energy" (:nutrientName %)) (:value %))
-;                       (:foodNutrients alimento))]
-;    (when (and nome porcao calorias)
-;      {:nome (str/trim nome)
-;       :porcao porcao
-;       :calorias calorias})))
 
 ;;POSSUI O NOME DA FABRICANTE
 (defn extrair-info-alimento [alimento]
@@ -53,8 +43,6 @@
       {:nome (str/trim nome-completo)
        :porcao porcao
        :calorias calorias})))
-
-
 
 (defn alimentos-info [query]
   (let [resultado (buscar-alimentos query)]

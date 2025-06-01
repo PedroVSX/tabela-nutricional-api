@@ -7,7 +7,9 @@
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
             [tabela-nutricional-api.db :as db]
             [tabela-nutricional-api.user :as user]
-            [tabela-nutricional-api.nutrition :as nutrition])
+            [tabela-nutricional-api.nutrition :as nutrition]
+            [tabela-nutricional-api.exercise :as exercise]
+            )
   (:import (java.time LocalDate)))
 
 ;; Registra encoder para LocalDate
@@ -21,11 +23,11 @@
    :body (json/generate-string conteudo)})
 
 (defroutes app-routes
-
+           ;;INICIO
            (GET "/" []
              (como-json {:mensagem "Bem-vindo à API de Tabela Nutricional!"}))
 
-           ;; USUÁRIOS
+           ;; PARA SALVAR OS DADOS DOS USUÁRIOS = http://localhost:3000/usuarios
            (POST "/usuarios" {body :body}
              (try
                (let [required-keys [:nome :altura :peso :idade :sexo]
@@ -38,6 +40,7 @@
                  (como-json {:erro "Falha no cadastro"
                              :detalhes (.getMessage e)} 500))))
 
+           ;;BUSCA AS INFORMAÇÕES DO USUARIO A PARTIR DO SEU ID = http://localhost:3000/usuarios/1
            (GET "/usuarios/:id" [id]
              (try
                (let [id-num (try (Integer/parseInt id) (catch Exception _ nil))
@@ -49,49 +52,38 @@
                  (como-json {:erro "Erro na busca"
                              :detalhes (.getMessage e)} 500))))
 
-           ;; BUSCAR VALORES NUTRICIONAIS DOS ALIMENTOS
-           (GET "/buscar-alimentos/:query" [query]
-             (try
-               (let [resultado (nutrition/buscar-alimentos query)]
-                 (if (:sucesso resultado)
-                   (como-json
-                     ;; Aqui retornamos a lista completa, já com porção
-                     (map #(select-keys % [:description :servingSize :servingSizeUnit :foodNutrients]) (:opcoes resultado)))
-                   (como-json {:erro "Falha na busca"
-                               :detalhes (:erro resultado)} 400)))
-               (catch Exception e
-                 (como-json {:erro "Erro no servidor"
-                             :detalhes (.getMessage e)} 500))))
 
-
-           ;; ALIMENTOS
-           (POST "/alimentos" {body :body}
+           ;; Lista completa de alimentos formatados a partir da API USDA = http://localhost:3000/alimentos/banana
+           (GET "/alimentos/:query" [query]
              (try
-               (let [required-keys [:usuario-id :alimento-selecionado :quantidade :data]
-                     missing-keys (remove #(contains? body %) required-keys)]
-                 (if (empty? missing-keys)
-                   (let [registro (db/registrar-alimento-completo
-                                    (:usuario-id body)
-                                    (:alimento-selecionado body)
-                                    (:quantidade body)
-                                    (:data body))]
-                     (como-json registro 201))
-                   (como-json {:erro "Dados incompletos"
-                               :campos-faltantes missing-keys} 400)))
-               (catch Exception e
-                 (como-json {:erro "Falha no registro"
-                             :detalhes (.getMessage e)} 500))))
-
-           (GET "/api/alimentos" [q]
-             (try
-               (if q
-                 (como-json (nutrition/alimentos-info q))
-                 (como-json {:erro "Parâmetro 'q' (query) é obrigatório"} 400))
+               (let [res (nutrition/alimentos-info query)]
+                 (if (seq res)
+                   (como-json res)
+                   (como-json {:erro "Nenhum alimento encontrado"} 404)))
                (catch Exception e
                  (como-json {:erro "Erro ao buscar alimentos"
                              :detalhes (.getMessage e)} 500))))
 
-           (route/not-found (como-json {:erro "Endpoint não encontrado"} 404))
+
+           ;; Lista completa de exercicios formatados a partir da API ninja = http://localhost:3000/exercicios/running/30
+           (GET "/exercicios/:atividade/:tempo" [atividade tempo]
+             (try
+               (let [duration (try (Integer/parseInt tempo)
+                                   (catch Exception _
+                                     nil))]
+                 (if (nil? duration)
+                   (como-json {:erro "O tempo precisa ser um número inteiro"} 400)
+                   (let [res (exercise/calcular-gasto-calorico atividade duration)]
+                     (if (map? res)
+                       ;; erro, retorna direto
+                       (como-json res)
+                       ;; lista de resultados
+                       (como-json {:resultados res} )))))
+               (catch Exception e
+                 (como-json {:erro "Erro ao buscar exercício"
+                             :detalhes (.getMessage e)} 500))))
+
+
            )
 
 (def app
