@@ -26,19 +26,26 @@
 
 ;; ALIMENTOS
 (defn proximo-id-alimento []
-  (swap! contador-usuarios inc))
+  (swap! contador-alimentos inc))
+
+(defn calcular-calorias [calorias-por-porcao quantidade serving-size]
+  (let [ss (if (and serving-size (pos? serving-size))
+             serving-size
+             100)]
+    (* calorias-por-porcao (/ quantidade ss))))
 
 (defn registrar-alimento [usuario-id nome quantidade data dados-nutricionais]
   (let [id (proximo-id-alimento)
-        registro {
-                  :id id
+        calorias-por-porcao (:calories dados-nutricionais)
+        serving-size (:serving_size_g dados-nutricionais)
+        calorias (calcular-calorias calorias-por-porcao quantidade serving-size)
+        registro {:id id
                   :usuario-id usuario-id
                   :alimento nome
                   :quantidade quantidade
                   :data data
-                  :calorias (* (:calories dados-nutricionais) (/ quantidade (:serving_size_g dados-nutricionais 1)))
-                  :dados-nutricionais dados-nutricionais
-                  }]
+                  :calorias calorias
+                  :dados-nutricionais dados-nutricionais}]
     (swap! alimentos conj registro)
     registro
     )

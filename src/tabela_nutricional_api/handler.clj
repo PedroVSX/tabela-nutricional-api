@@ -50,12 +50,21 @@
              (try
                (let [resultado (nutrition/buscar-alimentos query)]
                  (if (:sucesso resultado)
-                   (como-json (:opcoes resultado))
+                   (como-json (map (fn [alimento]
+                                     (assoc (nutrition/obter-dados-nutricionais alimento)
+                                       :nome (:name alimento)
+                                       :id (:fdcId alimento)))
+                                   (:opcoes resultado)))
                    (como-json {:erro "Falha na busca"
-                               :detalhes (:erro resultado)} 400)))
+                               :detalhes (:erro resultado)} 400)
+                   )
+                 )
                (catch Exception e
                  (como-json {:erro "Erro no servidor"
-                             :detalhes (.getMessage e)} 500))))
+                             :detalhes (.getMessage e)} 500)
+                 )
+               )
+             )
 
            ;; ALIMENTOS
            (POST "/alimentos" {body :body}
