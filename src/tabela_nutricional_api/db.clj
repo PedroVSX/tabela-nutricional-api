@@ -1,15 +1,22 @@
 (ns tabela-nutricional-api.db
   (:import [java.time LocalDate]))
 
+;; Contadores para IDs
 (def contador-usuarios (atom 0))
-(def usuarios (atom {}))
-
 (def contador-alimentos (atom 0))
-(def alimentos (atom []))
+(def contador-atividade (atom 0))
 
-(def atividades (atom []))
+;; Simulação de banco de dados com atoms
+(def usuarios (atom {}))              ;; ID => usuário
+(def alimentos (atom []))             ;; vetor de alimentos
+(def atividades (atom {}))            ;; ID => atividade
+(def alimentos-consumidos (atom []))  ;; Lista de alimentos registrados
 
-;; USUÁRIO
+
+;; ================================
+;; USUÁRIOS
+;; ================================
+
 (defn buscar-usuario [id]
   (get @usuarios id))
 
@@ -20,35 +27,46 @@
   (let [id (proximo-id-usuario)
         usuario (assoc dados :id id :data-cadastro (LocalDate/now))]
     (swap! usuarios assoc id usuario)
-    usuario
-    )
-  )
+    usuario))
 
-;; ALIMENTOS
+
+;; ================================
+;; ATIVIDADES
+;; ================================
+
+(defn buscar-atividade [id]
+  (get @atividades id))
+
+(defn proximo-id-atividade []
+  (swap! contador-atividade inc))
+
+(defn cadastrar-atividade [dados]
+  (let [id (proximo-id-atividade)
+        atividade (assoc dados :id id :data-cadastro (LocalDate/now))]
+    (swap! atividades assoc id atividade)
+    atividade))
+
+
+;; ================================
+;; ALIMENTOS (antigo e novo)
+;; ================================
+
 (defn proximo-id-alimento []
-  (swap! contador-usuarios inc))
+  (swap! contador-alimentos inc))
 
-(defn registrar-alimento [usuario-id nome quantidade data dados-nutricionais]
-  (let [id (proximo-id-alimento)
-        registro {
-                  :id id
-                  :usuario-id usuario-id
-                  :alimento nome
+;; Versão antiga para testes
+
+
+(defn proximo-id-consumo []
+  (swap! contador-alimentos inc))
+
+(defn registrar-alimento-consumido
+  [ alimento quantidade caloria]
+  ;; Insere no banco e retorna confirmação
+  ;; exemplo simples, ajuste conforme seu schema
+  (let [registro {:alimento alimento
+                  :caloria caloria
                   :quantidade quantidade
-                  :data data
-                  :calorias (* (:calories dados-nutricionais) (/ quantidade (:serving_size_g dados-nutricionais 1)))
-                  :dados-nutricionais dados-nutricionais
-                  }]
-    (swap! alimentos conj registro)
-    registro
-    )
-  )
-
-(defn registrar-alimento-completo [usuario-id alimento-selecionado quantidade data]
-  (registrar-alimento usuario-id
-                      (:name alimento-selecionado)
-                      quantidade
-                      data
-                      (select-keys alimento-selecionado [:calories :serving_size_g])
-                      )
-  )
+                  :data-consumo (java.time.LocalDate/now)}]
+    ;; Suponha que insira no banco aqui, e retorna o registro
+    registro))

@@ -1,6 +1,7 @@
 (ns tabela-nutricional-api.nutrition
   (:require [clj-http.client :as http]
             [clojure.string :as str]
+            [tabela-nutricional-api.db :as db]
             [environ.core :refer [env]]
             [cheshire.core :as json]))
 
@@ -8,16 +9,19 @@
 (def base-url "https://api.nal.usda.gov/fdc/v1/foods/search")
 
 (defn buscar-alimentos [query]
-  (let [response (http/get base-url
-                           {:query-params {"api_key" api-key
-                                           "query" query}
+  (let [params {"api_key" api-key
+                "query" query
+                "dataType" ["Survey (FNDDS)"]
+                "pageSize" 10}
+        response (http/get base-url
+                           {:query-params params
                             :accept :json
                             :throw-exceptions false})]
     (cond
       (= 200 (:status response))
       (let [body (json/parse-string (:body response) true)]
         {:sucesso true
-         :opcoes (:foods body)}) ;; Extrai a lista "foods"
+         :opcoes (:foods body)})
 
       (= 401 (:status response))
       {:sucesso false
@@ -27,8 +31,6 @@
       {:sucesso false
        :erro (str "Erro na API externa - Status: " (:status response))})))
 
-
-;;POSSUI O NOME DA FABRICANTE
 (defn extrair-info-alimento [alimento]
   (let [desc (:description alimento)
         marca (:brandName alimento)
@@ -37,9 +39,10 @@
                         desc)
         porcao (when (and (:servingSize alimento) (:servingSizeUnit alimento))
                  (str (:servingSize alimento) " " (:servingSizeUnit alimento)))
-        calorias (some #(when (= "Energy" (:nutrientName %)) (:value %))
+        calorias (some #(when (= "Energy" (:nutrientName %))
+                          (:value %))
                        (:foodNutrients alimento))]
-    (when (and nome-completo porcao calorias)
+    (when nome-completo
       {:nome (str/trim nome-completo)
        :porcao porcao
        :calorias calorias})))
@@ -49,6 +52,32 @@
     (if (:sucesso resultado)
       (->> (:opcoes resultado)
            (map extrair-info-alimento)
-           (filter some?)) ;; remove os nils (alimentos ignorados)
+           (filter some?))
       (do (println "Erro:" (:erro resultado))
           nil))))
+
+(defn buscar-alimentos [query]
+  (let [params {"api_key" api-key
+                "query" query
+                "dataType" ["Survey (FNDDS)"]
+                "pageSize" 10}
+        response (http/get base-url
+                           {:query-params params
+                            :accept :json
+                            :throw-exceptions false})]
+
+    (cond
+      (= 200 (:status response))
+      (let [body (json/parse-string (:body response) true)]
+        {:sucesso true
+         :opcoes (:foods body)})
+
+      (= 401 (:status response))
+      {:sucesso false
+       :erro "Chave da API inválida ou não fornecida"}
+
+      :else
+      {:sucesso false
+       :erro (str "Erro na API externa - Status: " (:status response)
+                  " - Body: " (:body response))})))
+
