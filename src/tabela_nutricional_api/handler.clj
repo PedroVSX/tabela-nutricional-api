@@ -80,6 +80,10 @@
                  (como-json {:erro "Falha no cadastro"
                              :detalhes (.getMessage e)} 500))))
 
+           (GET "/atividade" []
+             (como-json (vals @db/atividades)))
+
+
            ;; Busca atividade por ID
            (GET "/atividade/:id" [id]
              (try
@@ -106,20 +110,38 @@
                  (como-json {:erro "Erro ao buscar exercício"
                              :detalhes (.getMessage e)} 500))))
 
+           ;(POST "/consumo" {body :body}
+           ;  ;(println "Recebido no backend:" body)
+           ;  (try
+           ;    (let [{:keys [alimento caloria quantidade]} body]
+           ;      ;; validações simples
+           ;      (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade))
+           ;        (como-json {:erro "Campos obrigatórios: alimento, caloria, quantidade"} 400)
+           ;        (let [registro (db/registrar-alimento-consumido alimento caloria quantidade)]
+           ;          (como-json {:mensagem "Alimento registrado com sucesso" :registro registro} 201))))
+           ;    (catch Exception e
+           ;      (como-json {:erro "Erro ao registrar consumo" :detalhes (.getMessage e)} 500))))
+
            (POST "/consumo" {body :body}
-             ;(println "Recebido no backend:" body)
              (try
-               (let [{:keys [alimento caloria quantidade]} body]
-                 ;; validações simples
-                 (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade))
-                   (como-json {:erro "Campos obrigatórios: alimento, caloria, quantidade"} 400)
-                   (let [registro (db/registrar-alimento-consumido alimento caloria quantidade)]
+               (let [{:keys [alimento caloria quantidade data]} body]
+                 (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade) (str/blank? data))
+                   (como-json {:erro "Campos obrigatórios: alimento, caloria, quantidade, data"} 400)
+                   (let [registro (db/registrar-alimento-consumido alimento caloria quantidade data)]
                      (como-json {:mensagem "Alimento registrado com sucesso" :registro registro} 201))))
                (catch Exception e
                  (como-json {:erro "Erro ao registrar consumo" :detalhes (.getMessage e)} 500))))
 
 
-(GET "/api/alimentos" [busca]
+           (GET "/consumo" []
+             (como-json (db/listar-alimentos-consumidos)))
+
+
+           (GET "/consumo" []
+             (como-json (db/listar-alimentos-consumidos)))
+
+
+           (GET "/api/alimentos" [busca]
              (if (or (nil? busca) (str/blank? busca))
                (como-json {:erro "Parâmetro 'busca' é obrigatório"} 400)
                (try

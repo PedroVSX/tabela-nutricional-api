@@ -42,31 +42,25 @@
 
 (defn cadastrar-atividade [dados]
   (let [id (proximo-id-atividade)
-        atividade (assoc dados :id id :data-cadastro (LocalDate/now))]
+        atividade (assoc dados :id id)]
     (swap! atividades assoc id atividade)
     atividade))
 
 
 ;; ================================
-;; ALIMENTOS (antigo e novo)
+;; ALIMENTOS
 ;; ================================
 
-(defn proximo-id-alimento []
-  (swap! contador-alimentos inc))
 
-;; Versão antiga para testes
-
-
-(defn proximo-id-consumo []
-  (swap! contador-alimentos inc))
+(defn listar-alimentos-consumidos []
+  @alimentos-consumidos)
 
 (defn registrar-alimento-consumido
-  [ alimento quantidade caloria]
-  ;; Insere no banco e retorna confirmação
-  ;; exemplo simples, ajuste conforme seu schema
+  [alimento caloria quantidade data]
   (let [registro {:alimento alimento
                   :caloria caloria
                   :quantidade quantidade
-                  :data-consumo (java.time.LocalDate/now)}]
-    ;; Suponha que insira no banco aqui, e retorna o registro
+                  :data-consumo data}]
+    (swap! alimentos-consumidos conj registro)
     registro))
+
