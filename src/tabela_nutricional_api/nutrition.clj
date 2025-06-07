@@ -17,6 +17,7 @@
                            {:query-params params
                             :accept :json
                             :throw-exceptions false})]
+
     (cond
       (= 200 (:status response))
       (let [body (json/parse-string (:body response) true)]
@@ -29,7 +30,8 @@
 
       :else
       {:sucesso false
-       :erro (str "Erro na API externa - Status: " (:status response))})))
+       :erro (str "Erro na API externa - Status: " (:status response)
+                  " - Body: " (:body response))})))
 
 (defn extrair-info-alimento [alimento]
   (let [desc (:description alimento)
@@ -39,7 +41,7 @@
                         desc)
         porcao (when (and (:servingSize alimento) (:servingSizeUnit alimento))
                  (str (:servingSize alimento) " " (:servingSizeUnit alimento)))
-        calorias (some #(when (= "Energy" (:nutrientName %))
+        calorias (some #(when (= "Energy" (:nutrientName %)) ;; some retorna o primeiro valor correspondente. // when -> é como um if, mas sem o else.
                           (:value %))
                        (:foodNutrients alimento))]
     (when nome-completo
@@ -56,28 +58,5 @@
       (do (println "Erro:" (:erro resultado))
           nil))))
 
-(defn buscar-alimentos [query]
-  (let [params {"api_key" api-key
-                "query" query
-                "dataType" ["Survey (FNDDS)"]
-                "pageSize" 10}
-        response (http/get base-url
-                           {:query-params params
-                            :accept :json
-                            :throw-exceptions false})]
 
-    (cond
-      (= 200 (:status response))
-      (let [body (json/parse-string (:body response) true)]
-        {:sucesso true
-         :opcoes (:foods body)})
-
-      (= 401 (:status response))
-      {:sucesso false
-       :erro "Chave da API inválida ou não fornecida"}
-
-      :else
-      {:sucesso false
-       :erro (str "Erro na API externa - Status: " (:status response)
-                  " - Body: " (:body response))})))
 

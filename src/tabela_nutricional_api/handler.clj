@@ -10,7 +10,9 @@
             [tabela-nutricional-api.user :as user]
             [tabela-nutricional-api.nutrition :as nutrition]
             [tabela-nutricional-api.exercise :as exercise]
-            [tabela-nutricional-api.activity :as activity]) ; Corrigido: namespace correto
+            [tabela-nutricional-api.activity :as activity]
+            [tabela-nutricional-api.date :as date])
+
   (:import (java.time LocalDate)))
 
 ;; Encoder para datas no formato JSON
@@ -29,7 +31,7 @@
 
            ;; Mensagem inicial
            (GET "/" []
-             (como-json {:mensagem "Bem-vindo à API de Tabela Nutricional!"}))
+             (como-json {:mensagem "Bem-vindo a API de Tabela Nutricional!"}))
 
            ;; Cadastro de usuário
            (POST "/usuarios" {body :body}
@@ -70,7 +72,7 @@
            ;; Cadastro de atividade
            (POST "/atividade" {body :body}
              (try
-               (let [required-keys [:atividade :tempo]
+               (let [required-keys [:atividade :tempo :data :calorias]
                      missing-keys (remove #(contains? body %) required-keys)]
                  (if (empty? missing-keys)
                    (como-json (activity/cadastrar-atividade body) 201)
@@ -83,49 +85,24 @@
            (GET "/atividade" []
              (como-json (vals @db/atividades)))
 
-
-           ;; Busca atividade por ID
-           (GET "/atividade/:id" [id]
-             (try
-               (let [id-num (try (Integer/parseInt id) (catch Exception _ nil))
-                     atividade (activity/obter-atividade id-num)]
-                 (if atividade
-                   (como-json atividade)
-                   (como-json {:erro "Atividade não encontrada"} 404)))
-               (catch Exception e
-                 (como-json {:erro "Erro na busca"
-                             :detalhes (.getMessage e)} 500))))
-
-           ;; Busca de exercícios com cálculo calórico
            (GET "/exercicios/:atividade/:tempo" [atividade tempo]
              (try
                (let [duration (try (Integer/parseInt tempo) (catch Exception _ nil))]
+                 ;(println duration)
                  (if (nil? duration)
                    (como-json {:erro "O tempo precisa ser um número inteiro"} 400)
                    (let [res (exercise/calcular-gasto-calorico atividade duration)]
                      (if (map? res)
                        (como-json res)
                        (como-json {:resultados res})))))
-               (catch Exception e
-                 (como-json {:erro "Erro ao buscar exercício"
+s                 (como-json {:erro "Erro ao buscar exercício"
                              :detalhes (.getMessage e)} 500))))
 
-           ;(POST "/consumo" {body :body}
-           ;  ;(println "Recebido no backend:" body)
-           ;  (try
-           ;    (let [{:keys [alimento caloria quantidade]} body]
-           ;      ;; validações simples
-           ;      (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade))
-           ;        (como-json {:erro "Campos obrigatórios: alimento, caloria, quantidade"} 400)
-           ;        (let [registro (db/registrar-alimento-consumido alimento caloria quantidade)]
-           ;          (como-json {:mensagem "Alimento registrado com sucesso" :registro registro} 201))))
-           ;    (catch Exception e
-           ;      (como-json {:erro "Erro ao registrar consumo" :detalhes (.getMessage e)} 500))))
 
            (POST "/consumo" {body :body}
              (try
                (let [{:keys [alimento caloria quantidade data]} body]
-                 (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade) (str/blank? data))
+                 (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade) (str/blank? data)) ;; str/blank? verifica se a string está vazia, nula ou só com espaços
                    (como-json {:erro "Campos obrigatórios: alimento, caloria, quantidade, data"} 400)
                    (let [registro (db/registrar-alimento-consumido alimento caloria quantidade data)]
                      (como-json {:mensagem "Alimento registrado com sucesso" :registro registro} 201))))
@@ -137,22 +114,10 @@
              (como-json (db/listar-alimentos-consumidos)))
 
 
-           (GET "/consumo" []
-             (como-json (db/listar-alimentos-consumidos)))
-
-
-           (GET "/api/alimentos" [busca]
-             (if (or (nil? busca) (str/blank? busca))
-               (como-json {:erro "Parâmetro 'busca' é obrigatório"} 400)
-               (try
-                 (let [resultado (nutrition/alimentos-info busca)]
-                   (if (seq resultado)
-                     (como-json resultado)
-                     (como-json {:erro "Nenhum alimento encontrado"} 404)))
-                 (catch Exception e
-                   (como-json {:erro "Erro ao buscar alimentos"
-                               :detalhes (.getMessage e)} 500)))))
-
+           ;; GET para consultar todos os alimentos consumidos
+           (GET "/alimentos" []
+             {:status 200
+              :body @db/alimentos-consumidos})
 
            )
 
