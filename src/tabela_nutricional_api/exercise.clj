@@ -1,6 +1,7 @@
 (ns tabela-nutricional-api.exercise
   (:require [clj-http.client :as http]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [tabela-nutricional-api.translate :as translate]))
 
 (def api-key "tFFftSLq2cuyKWH07bxoQg==y31S5MYKZvEG7Ohi")
 (def base-url "https://api.api-ninjas.com/v1/caloriesburned")
@@ -40,7 +41,8 @@
    (calcular-gasto-calorico atividade tempo nil)) ;; peso opcional
   ([atividade tempo peso]
    (println "Atividade:" atividade "Tempo:" tempo "Peso:" peso)
-   (let [query-params (cond-> {"activity" atividade
+   (let [atividade-en (translate/traduzir atividade "pt|en")
+         query-params (cond-> {"activity" atividade-en
                                "duration" tempo}
                               peso (assoc "weight" peso))
          response (http/get base-url
@@ -56,7 +58,7 @@
          (if (seq body)
            ;; Retorna todos os resultados mapeados no formato desejado
            (map (fn [res]
-                  {:atividade (:name res)
+                  {:atividade (translate/traduzir (:name res) "en|pt")
                    :tempo (:duration_minutes res)
                    :calorias (:total_calories res)})
                 body)

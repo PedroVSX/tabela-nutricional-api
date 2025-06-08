@@ -95,7 +95,9 @@
                      (if (map? res)
                        (como-json res)
                        (como-json {:resultados res})))))
-s                 (como-json {:erro "Erro ao buscar exercício"
+
+               (catch Exception e
+                 (como-json {:erro "Erro ao buscar exercício"
                              :detalhes (.getMessage e)} 500))))
 
 
@@ -118,6 +120,12 @@ s                 (como-json {:erro "Erro ao buscar exercício"
            (GET "/alimentos" []
              {:status 200
               :body @db/alimentos-consumidos})
+
+
+           (GET "/favicon.ico" []
+             {:status 204
+              :headers {}
+              :body ""})
 
            )
 
