@@ -3,13 +3,11 @@
 
 ;; Contadores para IDs
 (def contador-usuarios (atom 0))
-(def contador-atividade (atom 0))
 
 ;; Simulação de banco de dados com atoms
-(def usuarios (atom {}))              ;; ID => usuário
-(def atividades (atom {}))            ;; ID => atividade
-(def alimentos-consumidos (atom []))  ;; Lista de alimentos registrados
-
+(def usuarios (atom {}))                ;; ID => usuário
+(def atividades-registradas (atom []))  ;;Lista de alimentos registrados
+(def alimentos-consumidos (atom []))    ;; Lista de alimentos registrados
 
 ;; ================================
 ;; USUÁRIOS
@@ -31,18 +29,17 @@
 ;; ATIVIDADES
 ;; ================================
 
-(defn buscar-atividade [id]
-  (get @atividades id))
+(defn registrar-atividade
+  [atividade tempo calorias data]
+  (let [registro {:atividade atividade
+                  :tempo tempo
+                  :calorias calorias
+                  :data data}]
+    (swap! atividades-registradas conj registro)
+    registro))
 
-(defn proximo-id-atividade []
-  (swap! contador-atividade inc))
-
-(defn cadastrar-atividade [dados]
-  (let [id (proximo-id-atividade)
-        atividade (assoc dados :id id)]                     ;; assoc -> adiciona (ou atualiza) a atividade no mapa.
-    (swap! atividades assoc id atividade)                   ;; swap! -> altera o valor do atom de forma imutável e segura.
-    atividade))
-
+(defn listar-atividades []
+  @atividades-registradas)
 
 ;; ================================
 ;; ALIMENTOS

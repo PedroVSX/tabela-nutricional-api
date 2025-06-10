@@ -1,18 +1,16 @@
 (ns tabela-nutricional-api.date
   (:require [clojure.string :as str]))
 
-(defn inverter-data [data-str]
-  (let [[d m a] (str/split data-str #"/")
-        d (format "%02d" (Integer/parseInt d))
-        m (format "%02d" (Integer/parseInt m))]
-    (str a "/" m "/" d)))
+(defn data-int [data]
+  ;; "dd/MM/yyyy" -> yyyyMMdd como número
+  (Integer/parseInt
+    (apply str [(subs data 6 10)
+                (subs data 3 5)
+                (subs data 0 2)])))
 
+(defn data-no-periodo? [data-consumo data-inicial data-final]
+  (let [dc (data-int data-consumo)
+        di (data-int data-inicial)
+        df (data-int data-final)]
+    (and (>= dc di) (<= dc df))))
 
-(defn filtra-por-periodo [lista-alimentos data-inicial data-final]
-  (let [data-inv-inicial (inverter-data data-inicial)
-        data-inv-final   (inverter-data data-final)]
-    (filter (fn [item]
-              (let [data (inverter-data (:data-consumo item))]
-                (and (>= data data-inv-inicial)
-                     (<= data data-inv-final))))
-            lista-alimentos)))
