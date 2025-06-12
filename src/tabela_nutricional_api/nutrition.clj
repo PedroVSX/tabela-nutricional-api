@@ -2,6 +2,7 @@
   (:require [clj-http.client :as http]
             [clojure.string :as str]
             [tabela-nutricional-api.db :as db]
+            [tabela-nutricional-api.translate :as translate]
             [environ.core :refer [env]]
             [cheshire.core :as json]))
 
@@ -39,18 +40,20 @@
         nome-completo (if marca
                         (str desc " - " marca)
                         desc)
+        nome-traduzido (translate/traduzir nome-completo "en|pt")
         porcao (when (and (:servingSize alimento) (:servingSizeUnit alimento))
                  (str (:servingSize alimento) " " (:servingSizeUnit alimento)))
         calorias (some #(when (= "Energy" (:nutrientName %)) ;; some retorna o primeiro valor correspondente. // when -> é como um if, mas sem o else.
                           (:value %))
                        (:foodNutrients alimento))]
     (when nome-completo
-      {:nome (str/trim nome-completo)
+      {:nome (str/trim nome-traduzido)
        :porcao porcao
        :calorias calorias})))
 
 (defn alimentos-info [query]
-  (let [resultado (buscar-alimentos query)]
+  (let [query-traduzido (translate/traduzir query "pt|en")
+        resultado (buscar-alimentos query-traduzido)]
     (if (:sucesso resultado)
       (->> (:opcoes resultado)
            (map extrair-info-alimento)

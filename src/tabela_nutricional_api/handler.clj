@@ -6,6 +6,7 @@
             [cheshire.generate :refer [add-encoder]]
             [ring.middleware.defaults :refer [wrap-defaults api-defaults]]
             [ring.middleware.json :refer [wrap-json-body wrap-json-response]]
+            [ring.util.response :as response]
             [tabela-nutricional-api.db :as db]
             [tabela-nutricional-api.user :as user]
             [tabela-nutricional-api.nutrition :as nutrition]
@@ -25,6 +26,57 @@
   {:status (or status 200)
    :headers {"Content-Type" "application/json; charset=utf-8"}
    :body (json/generate-string conteudo)})
+
+(defn extrato-alimento [request]
+  (let [{:keys [data-inicial data-final] :as body} (:body request)]
+    (println "Body já convertido (mapeado por wrap-json-body):" body)
+    (println "Datas recebidas:" data-inicial data-final)
+
+    (let [alimentos (db/listar-alimentos-consumidos)]
+      (println "Alimentos cadastrados:" alimentos)
+
+      (let [filtrados
+            (filter (fn [a]
+                      (try
+                        (and (string? (:data-consumo a))
+                             (date/data-no-periodo?
+                               (:data-consumo a)
+                               data-inicial
+                               data-final))
+                        (catch Exception e
+                          (println "Erro no registro:" a "->" (.getMessage e))
+                          false)))
+                    alimentos)
+
+            ordenados (sort-by #(date/data-int (:data-consumo %)) filtrados)]
+        (println "Alimentos filtrados e ordenados no período:" ordenados)
+        (como-json ordenados)))))
+
+(defn extrato-atividade [request]
+  (let [{:keys [data-inicial data-final] :as body} (:body request)]
+    (println "Body já convertido (mapeado por wrap-json-body):" body)
+    (println "Datas recebidas:" data-inicial data-final)
+
+    ;; Extrai as atividades como coleção a partir do mapa
+    (let [atividades (db/listar-atividades)]
+      (println "Atividades cadastradas:" atividades)
+
+      (let [filtrados
+            (filter (fn [a]
+                      (try
+                        (and (string? (:data a))
+                             (date/data-no-periodo?
+                               (:data a)
+                               data-inicial
+                               data-final))
+                        (catch Exception e
+                          (println "Erro no registro:" a "->" (.getMessage e))
+                          false)))
+                    atividades)
+
+            ordenados (sort-by #(date/data-int (:data %)) filtrados)]
+        (println "Atividades filtrados e ordenados no período:" ordenados)
+        (como-json ordenados)))))
 
 ;; Rotas
 (defroutes app-routes
@@ -82,24 +134,40 @@
                  (como-json {:erro "Falha no cadastro"
                              :detalhes (.getMessage e)} 500))))
 
-           (GET "/atividade" []
-             (como-json (vals @db/atividades)))
 
-           (GET "/exercicios/:atividade/:tempo" [atividade tempo]
+
+           ;(GET "/exercicios/:atividade/:tempo" [atividade tempo]
+           ;  (try
+           ;    (let [duration (try (Integer/parseInt tempo) (catch Exception _ nil))]
+           ;      ;(println duration)
+           ;      (if (nil? duration)
+           ;        (como-json {:erro "O tempo precisa ser um número inteiro"} 400)
+           ;        (let [res (exercise/calcular-gasto-calorico atividade duration)]
+           ;          (if (map? res)
+           ;            (como-json res)
+           ;            (como-json {:resultados res})))))
+           ;
+           ;    (catch Exception e
+           ;      (como-json {:erro "Erro ao buscar exercício"
+           ;                  :detalhes (.getMessage e)} 500))))
+
+
+           (GET "/exercicios/:atividade/:tempo/:peso" [atividade tempo peso]
              (try
-               (let [duration (try (Integer/parseInt tempo) (catch Exception _ nil))]
-                 ;(println duration)
-                 (if (nil? duration)
-                   (como-json {:erro "O tempo precisa ser um número inteiro"} 400)
-                   (let [res (exercise/calcular-gasto-calorico atividade duration)]
-                     (if (map? res)
-                       (como-json res)
-                       (como-json {:resultados res})))))
-s                 (como-json {:erro "Erro ao buscar exercício"
-                             :detalhes (.getMessage e)} 500))))
+               (let [duration (try (Integer/parseInt tempo) (catch Exception _ nil))
+                     weight (try (Integer/parseInt peso) (catch Exception _ nil))]
+                 (if (or (nil? duration) (nil? weight))
+                   (como-json {:erro "O tempo e peso precisam ser números inteiros"} 400)
+                   (let [res (exercise/calcular-gasto-calorico atividade duration weight)]
+                     (if (or (map? res) (vector? res))
+                       (como-json (if (map? res) res {:resultados res}))
+                       (como-json {:erro "Resposta inesperada da API"} 500)))))
+                 (catch Exception e
+                   (como-json {:erro "Erro ao buscar exercício"
+                               :detalhes (.getMessage e)} 500))))
 
 
-           (POST "/consumo" {body :body}
+             (POST "/consumo" {body :body}
              (try
                (let [{:keys [alimento caloria quantidade data]} body]
                  (if (or (str/blank? alimento) (nil? caloria) (nil? quantidade) (str/blank? data)) ;; str/blank? verifica se a string está vazia, nula ou só com espaços
@@ -119,7 +187,15 @@ s                 (como-json {:erro "Erro ao buscar exercício"
              {:status 200
               :body @db/alimentos-consumidos})
 
-           )
+           (POST "/extrato/alimento" [] extrato-alimento)
+
+           (POST "/extrato/atividade" [] extrato-atividade)
+
+
+           (GET "/favicon.ico" []
+             {:status 204
+              :headers {}
+              :body ""}))
 
 
 ;; Aplicação com middlewares
